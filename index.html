@@ -1,450 +1,684 @@
-```html
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barber Booking App</title>
-    <!-- ใช้ Tailwind CSS เพื่อความรวดเร็วและดีไซน์ที่สวยงาม (Mobile-first) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Gentleman - Advanced Barber System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- ใช้ Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        barber: {
-                            black: '#0a0a0a',
-                            dark: '#1a1a1a',
-                            gold: '#D4AF37',
-                            lightGold: '#F3E5AB',
-                            white: '#ffffff'
-                        }
+                        dark: { 900: '#050505', 800: '#121212', 700: '#1e1e1e' },
+                        gold: { 400: '#facc15', 500: '#eab308', 600: '#ca8a04' }
                     },
-                    fontFamily: {
-                        sans: ['Prompt', 'sans-serif'],
-                    }
+                    fontFamily: { sans: ['Prompt', 'sans-serif'] },
+                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
                 }
             }
         }
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+        
         body {
             font-family: 'Prompt', sans-serif;
-            background-color: #0a0a0a;
-            color: #ffffff;
+            background-color: #050505; color: #f3f4f6; -webkit-tap-highlight-color: transparent;
         }
-        /* ซ่อนหน้าต่างที่ไม่ได้ใช้งาน */
-        .hidden-view {
-            display: none !important;
+
+        .glass-panel {
+            background: rgba(30, 30, 30, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
         }
-        /* สไตล์สำหรับ input แบบ premium */
-        .premium-input {
-            width: 100%;
-            background-color: #1a1a1a;
-            border: 1px solid #333;
-            color: white;
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            transition: all 0.3s;
+        .gold-glow { box-shadow: 0 0 20px rgba(234, 179, 8, 0.15); }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #eab308; }
+
+        .hidden-view { display: none !important; }
+
+        .input-premium {
+            width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #333; color: white;
+            padding: 0.75rem 1rem; border-radius: 0.75rem; transition: all 0.3s ease;
         }
-        .premium-input:focus {
-            outline: none;
-            border-color: #D4AF37;
-            box-shadow: 0 0 0 1px #D4AF37;
-        }
-        /* เปลี่ยนสีไอคอนปฏิทินและเวลาเป็นสีทอง */
-        ::-webkit-calendar-picker-indicator {
-            filter: invert(75%) sepia(43%) saturate(583%) hue-rotate(3deg) brightness(108%) contrast(106%);
-            cursor: pointer;
-        }
+        .input-premium:focus { outline: none; border-color: #eab308; box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.2); }
+
+        .tab-btn.active { border-bottom: 2px solid #eab308; color: #eab308; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .status-available { background-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
+        .status-busy { background-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
+        .img-fallback { background-color: #1a1a1a; display: flex; align-items: center; justify-content: center; }
+
+        /* Chat bubbles */
+        .chat-bubble-me { background: #eab308; color: #000; border-radius: 1rem 1rem 0 1rem; }
+        .chat-bubble-other { background: #1e1e1e; color: #fff; border-radius: 1rem 1rem 1rem 0; border: 1px solid #333; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col relative pb-16">
+<body class="min-h-screen flex flex-col relative pb-20">
 
-    <!-- Navigation Bar -->
-    <nav class="bg-barber-dark border-b border-barber-gold/20 p-4 sticky top-0 z-50">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="navigateTo('home')">
-                <i data-lucide="scissors" class="text-barber-gold"></i>
-                <span class="text-xl font-bold tracking-wider text-barber-white">THE <span class="text-barber-gold">GENTLEMAN</span></span>
-            </div>
-            <button onclick="navigateTo('admin')" class="text-sm text-gray-400 hover:text-barber-gold transition">
-                <i data-lucide="shield-check" class="w-5 h-5 inline"></i> แอดมิน
-            </button>
-        </div>
-    </nav>
-
-    <!-- แจ้งเตือน (Toast Notification) -->
-    <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 hidden-view opacity-0 transition-opacity duration-300 flex items-center gap-2">
-        <i data-lucide="alert-circle" class="w-5 h-5"></i>
-        <span id="toast-message">เกิดข้อผิดพลาด</span>
+    <!-- Toast & Modals -->
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-[100] hidden-view opacity-0 transition-opacity duration-300 flex items-center gap-3 text-sm font-medium glass-panel border-gray-700">
+        <i id="toast-icon" data-lucide="info" class="w-5 h-5"></i><span id="toast-message"></span>
     </div>
 
-    <!-- 1. Home View -->
-    <main id="view-home" class="flex-grow container mx-auto px-4 py-8 flex flex-col items-center justify-center text-center">
-        <div class="max-w-md w-full bg-barber-dark p-8 rounded-2xl border border-barber-gold/20 shadow-2xl">
-            <div class="w-24 h-24 mx-auto bg-barber-black rounded-full border-2 border-barber-gold flex items-center justify-center mb-6">
-                <i data-lucide="scissors" class="w-12 h-12 text-barber-gold"></i>
+    <div id="confirm-modal" class="fixed inset-0 bg-black/80 z-[200] hidden-view flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+        <div class="glass-panel p-6 rounded-2xl max-w-sm w-full mx-4 gold-glow border border-gray-700 text-center shadow-2xl">
+            <div class="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/30"><i data-lucide="alert-triangle" class="w-8 h-8 text-red-500"></i></div>
+            <h3 class="text-xl font-bold mb-2 text-white">ยืนยันการทำรายการ</h3>
+            <p id="confirm-message" class="text-gray-400 text-sm mb-6"></p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirm()" class="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm font-medium">ยกเลิก</button>
+                <button onclick="executeConfirm()" class="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 transition shadow-[0_0_15px_rgba(239,68,68,0.4)] text-sm">ยืนยัน</button>
             </div>
-            <h1 class="text-3xl font-bold mb-2">The Gentleman Barber</h1>
-            <p class="text-gray-400 mb-8 text-sm">บริการตัดผมชายสไตล์คลาสสิกและโมเดิร์น โดยช่างผู้เชี่ยวชาญ สัมผัสประสบการณ์ระดับพรีเมียมได้ที่นี่</p>
-            
-            <div class="space-y-4 text-left mb-8">
-                <div class="flex items-center gap-3 p-3 bg-barber-black rounded-lg border border-gray-800">
-                    <i data-lucide="scissors-line-dashed" class="text-barber-gold"></i>
-                    <div>
-                        <h3 class="font-semibold text-sm">Premium Haircut</h3>
-                        <p class="text-xs text-gray-500">ตัดผมพร้อมเซ็ตทรง - 500 THB</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3 p-3 bg-barber-black rounded-lg border border-gray-800">
-                    <i data-lucide="droplet" class="text-barber-gold"></i>
-                    <div>
-                        <h3 class="font-semibold text-sm">Hot Towel Shave</h3>
-                        <p class="text-xs text-gray-500">โกนหนวดผ้าร้อน - 300 THB</p>
-                    </div>
-                </div>
-            </div>
-
-            <button onclick="navigateTo('booking')" class="w-full bg-barber-gold text-black font-bold py-4 rounded-xl hover:bg-yellow-400 transition shadow-[0_0_15px_rgba(212,175,55,0.4)] flex justify-center items-center gap-2">
-                จองคิวตอนนี้ <i data-lucide="arrow-right" class="w-5 h-5"></i>
-            </button>
         </div>
-    </main>
+    </div>
 
-    <!-- 2. Booking View -->
-    <main id="view-booking" class="hidden-view flex-grow container mx-auto px-4 py-8">
-        <div class="max-w-md mx-auto">
-            <button onclick="navigateTo('home')" class="mb-6 text-gray-400 hover:text-barber-gold flex items-center gap-1 text-sm transition">
-                <i data-lucide="arrow-left" class="w-4 h-4"></i> กลับหน้าหลัก
-            </button>
-            
-            <h2 class="text-2xl font-bold mb-6 text-barber-gold border-b border-gray-800 pb-4">รายละเอียดการจอง</h2>
-            
-            <form id="booking-form" class="space-y-5">
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">ชื่อ-นามสกุล</label>
-                    <input type="text" id="cust-name" required class="premium-input" placeholder="ตัวอย่าง: สมชาย ใจดี">
-                </div>
+    <!-- ==================== AUTHENTICATION VIEW ==================== -->
+    <main id="view-auth" class="flex-grow container mx-auto px-4 flex flex-col items-center justify-center min-h-screen relative overflow-hidden">
+        <div class="absolute top-1/4 left-1/4 w-64 h-64 bg-yellow-600/20 rounded-full blur-[100px] -z-10"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-600/10 rounded-full blur-[100px] -z-10"></div>
+
+        <div class="w-full max-w-md glass-panel rounded-3xl p-8 gold-glow relative">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 mx-auto bg-dark-800 rounded-full border border-gold-500 flex items-center justify-center mb-4 shadow-[0_0_25px_rgba(234,179,8,0.3)]"><i data-lucide="scissors" class="w-10 h-10 text-gold-500"></i></div>
+                <h1 class="text-3xl font-bold tracking-wider text-white">THE <span class="text-gold-500">GENTLEMAN</span></h1>
+                <p class="text-gray-400 text-sm mt-2">Premium Barber & Shop</p>
+            </div>
+
+            <div class="flex border-b border-gray-700 mb-6">
+                <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 py-3 text-sm font-medium tab-btn active">เข้าสู่ระบบ</button>
+                <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 py-3 text-sm font-medium text-gray-500 tab-btn">สมัครสมาชิก</button>
+            </div>
+
+            <form id="form-login" class="space-y-4" onsubmit="handleLogin(event)">
+                <input type="text" id="login-username" required class="input-premium" placeholder="Username (เช่น berbar)">
+                <input type="password" id="login-password" required class="input-premium" placeholder="รหัสผ่าน (เช่น 1234)">
                 
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">เบอร์โทรศัพท์</label>
-                    <input type="tel" id="cust-phone" required class="premium-input" placeholder="08X-XXX-XXXX" pattern="[0-9]{10}">
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">วันที่ต้องการจอง</label>
-                        <input type="date" id="book-date" required class="premium-input">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">เวลา</label>
-                        <select id="book-time" required class="premium-input appearance-none">
-                            <option value="">เลือกเวลา</option>
-                            <option value="10:00">10:00</option>
-                            <option value="11:00">11:00</option>
-                            <option value="12:00">12:00</option>
-                            <option value="13:00">13:00</option>
-                            <option value="14:00">14:00</option>
-                            <option value="15:00">15:00</option>
-                            <option value="16:00">16:00</option>
-                            <option value="17:00">17:00</option>
-                            <option value="18:00">18:00</option>
-                            <option value="19:00">19:00</option>
-                        </select>
-                    </div>
+                <!-- เช็คบ็อกซ์จำรหัสผ่าน -->
+                <div class="flex items-center gap-2 mt-2 px-1">
+                    <input type="checkbox" id="remember-me" class="w-4 h-4 accent-gold-500 rounded bg-dark-800 border-gray-700">
+                    <label for="remember-me" class="text-sm text-gray-400 cursor-pointer">จำการเข้าสู่ระบบไว้ในเครื่องนี้</label>
                 </div>
 
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">เลือกช่างตัดผม</label>
-                    <select id="barber-select" required class="premium-input appearance-none">
-                        <option value="">เลือกช่าง</option>
-                        <option value="John (Master)">ช่างจอห์น (Master Barber)</option>
-                        <option value="Mike (Fade)">ช่างไมค์ (Fade Specialist)</option>
-                        <option value="Sarah (Stylist)">ช่างซาร่า (Modern Stylist)</option>
-                    </select>
-                </div>
+                <button type="submit" class="w-full bg-gold-500 text-black font-bold py-3.5 rounded-xl hover:bg-gold-400 transition mt-4">เข้าสู่ระบบ</button>
+            </form>
 
-                <div class="pt-4">
-                    <button type="submit" class="w-full bg-barber-gold text-black font-bold py-4 rounded-xl hover:bg-yellow-400 transition flex justify-center items-center gap-2">
-                        <i data-lucide="check-circle" class="w-5 h-5"></i> ยืนยันการจอง
-                    </button>
-                </div>
+            <form id="form-register" class="space-y-4 hidden-view" onsubmit="handleRegister(event)">
+                <div class="grid grid-cols-2 gap-3"><input type="text" id="reg-fname" required class="input-premium" placeholder="ชื่อจริง"><input type="text" id="reg-nname" required class="input-premium" placeholder="ชื่อเล่น"></div>
+                <input type="tel" id="reg-phone" required class="input-premium" placeholder="เบอร์โทรศัพท์">
+                <input type="text" id="reg-username" required class="input-premium" placeholder="Username">
+                <input type="password" id="reg-password" required class="input-premium" placeholder="ตั้งรหัสผ่าน">
+                <button type="submit" class="w-full bg-dark-700 text-white font-bold py-3.5 rounded-xl hover:bg-dark-600 border border-gray-600 transition mt-4">สมัครสมาชิก</button>
             </form>
         </div>
     </main>
 
-    <!-- 3. Success View -->
-    <main id="view-success" class="hidden-view flex-grow container mx-auto px-4 py-12 flex flex-col items-center justify-center text-center">
-        <div class="max-w-md w-full bg-barber-dark p-8 rounded-2xl border border-green-500/30 shadow-2xl">
-            <div class="w-20 h-20 mx-auto bg-green-500/10 rounded-full flex items-center justify-center mb-6">
-                <i data-lucide="check-circle-2" class="w-12 h-12 text-green-500"></i>
-            </div>
-            <h2 class="text-2xl font-bold text-white mb-2">จองคิวสำเร็จ!</h2>
-            <p class="text-gray-400 text-sm mb-6">กรุณามาถึงร้านก่อนเวลา 10 นาที</p>
-            
-            <div class="bg-barber-black rounded-xl p-5 text-left space-y-3 mb-8 border border-gray-800">
-                <div class="flex justify-between border-b border-gray-800 pb-2">
-                    <span class="text-gray-500 text-sm">ชื่อลูกค้า</span>
-                    <span id="success-name" class="font-medium"></span>
-                </div>
-                <div class="flex justify-between border-b border-gray-800 pb-2">
-                    <span class="text-gray-500 text-sm">วันที่</span>
-                    <span id="success-date" class="font-medium text-barber-gold"></span>
-                </div>
-                <div class="flex justify-between border-b border-gray-800 pb-2">
-                    <span class="text-gray-500 text-sm">เวลา</span>
-                    <span id="success-time" class="font-medium text-barber-gold"></span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500 text-sm">ช่างตัดผม</span>
-                    <span id="success-barber" class="font-medium"></span>
-                </div>
-            </div>
+    <!-- ==================== PENDING APPROVAL VIEW ==================== -->
+    <main id="view-pending" class="hidden-view flex-grow container mx-auto px-4 flex flex-col items-center justify-center min-h-screen text-center">
+        <i data-lucide="clock" class="w-20 h-20 text-gold-500 mb-6 animate-pulse-slow"></i><h2 class="text-2xl font-bold mb-2">รอการอนุมัติ</h2>
+        <p class="text-gray-400 mb-8 max-w-sm">บัญชีของคุณกำลังรอการตรวจสอบจากเจ้าของร้าน<br>ระบบจะอัปเดตอัตโนมัติเมื่อได้รับการอนุมัติ</p>
+        <button onclick="logout()" class="px-6 py-2 border border-gray-600 rounded-full text-sm hover:bg-gray-800 transition">ออกจากระบบ</button>
+    </main>
 
-            <button onclick="navigateTo('home')" class="w-full bg-gray-800 text-white font-medium py-3 rounded-xl hover:bg-gray-700 transition">
-                กลับหน้าหลัก
+    <!-- ==================== MAIN APP SHELL ==================== -->
+    <div id="app-shell" class="hidden-view flex flex-col min-h-screen">
+        <nav class="glass-panel sticky top-0 z-40 border-b-0 border-gold-500/20">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-gold-500 rounded flex items-center justify-center text-black"><i data-lucide="scissors" class="w-5 h-5"></i></div>
+                    <span class="font-bold tracking-widest text-lg">THE GENTLEMAN</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="user-display-name" class="text-sm text-gray-300"></span>
+                    <button onclick="logout()" class="text-red-400 hover:text-red-300 p-1 bg-red-500/10 rounded-lg" title="ออกจากระบบ"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+                </div>
+            </div>
+        </nav>
+
+        <div id="main-content" class="flex-grow pb-24"></div>
+
+        <!-- Navigation (Customer) - 4 Items -->
+        <div id="bottom-nav" class="fixed bottom-0 w-full glass-panel border-t border-gray-800 z-50 px-4 py-3 pb-safe flex justify-between items-center hidden-view">
+            <button onclick="renderCustomerHome()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gold-500 w-1/4 nav-item" id="nav-home">
+                <i data-lucide="home" class="w-6 h-6"></i><span class="text-[10px]">หน้าหลัก</span>
+            </button>
+            <button onclick="renderCart()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gold-500 w-1/4 relative nav-item" id="nav-cart">
+                <i data-lucide="shopping-bag" class="w-6 h-6"></i><span class="text-[10px]">ตะกร้า</span><span id="cart-badge" class="absolute -top-1 right-3 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center hidden-view">0</span>
+            </button>
+            <button onclick="renderHistory()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gold-500 w-1/4 nav-item" id="nav-history">
+                <i data-lucide="clock-4" class="w-6 h-6"></i><span class="text-[10px]">ประวัติ</span>
+            </button>
+            <!-- เมนูแชทลูกค้า -->
+            <button onclick="renderCustomerChat()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gold-500 w-1/4 relative nav-item" id="nav-chat">
+                <i data-lucide="message-square" class="w-6 h-6"></i><span class="text-[10px]">ข้อความ</span>
             </button>
         </div>
-    </main>
 
-    <!-- 4. Admin Dashboard View -->
-    <main id="view-admin" class="hidden-view flex-grow container mx-auto px-4 py-8">
-        <div class="max-w-4xl mx-auto">
-            <div class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
-                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
-                    <i data-lucide="layout-dashboard" class="text-barber-gold"></i> ระบบจัดการการจอง
-                </h2>
-                <button onclick="navigateTo('home')" class="text-gray-400 hover:text-white text-sm flex items-center gap-1 transition">
-                    <i data-lucide="x" class="w-4 h-4"></i> ปิด
-                </button>
-            </div>
-
-            <!-- สรุปสถิติ -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div class="bg-barber-dark p-4 rounded-xl border border-gray-800">
-                    <p class="text-sm text-gray-500 mb-1">การจองทั้งหมด</p>
-                    <p class="text-2xl font-bold text-barber-gold" id="stat-total">0</p>
-                </div>
-                <div class="bg-barber-dark p-4 rounded-xl border border-gray-800">
-                    <p class="text-sm text-gray-500 mb-1">คิวของ จอห์น</p>
-                    <p class="text-xl font-bold" id="stat-john">0</p>
-                </div>
-                <div class="bg-barber-dark p-4 rounded-xl border border-gray-800">
-                    <p class="text-sm text-gray-500 mb-1">คิวของ ไมค์</p>
-                    <p class="text-xl font-bold" id="stat-mike">0</p>
-                </div>
-                <div class="bg-barber-dark p-4 rounded-xl border border-gray-800">
-                    <p class="text-sm text-gray-500 mb-1">คิวของ ซาร่า</p>
-                    <p class="text-xl font-bold" id="stat-sarah">0</p>
-                </div>
-            </div>
-
-            <!-- ตารางแสดงรายการ -->
-            <div class="bg-barber-dark rounded-xl border border-gray-800 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-barber-black text-gray-400 text-sm uppercase tracking-wider">
-                                <th class="p-4 font-medium border-b border-gray-800">วันที่-เวลา</th>
-                                <th class="p-4 font-medium border-b border-gray-800">ลูกค้า</th>
-                                <th class="p-4 font-medium border-b border-gray-800">เบอร์โทร</th>
-                                <th class="p-4 font-medium border-b border-gray-800">ช่าง</th>
-                                <th class="p-4 font-medium border-b border-gray-800 text-center">จัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-table-body" class="text-sm divide-y divide-gray-800">
-                            <!-- ข้อมูลจะถูก render ผ่าน JS ที่นี่ -->
-                        </tbody>
-                    </table>
-                </div>
-                <div id="admin-empty-state" class="p-8 text-center text-gray-500 hidden-view">
-                    <i data-lucide="calendar-x" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
-                    <p>ยังไม่มีรายการจองคิวในขณะนี้</p>
-                </div>
-            </div>
+        <!-- Navigation (Admin) - 4 Items -->
+        <div id="admin-bottom-nav" class="fixed bottom-0 w-full glass-panel border-t border-gray-800 z-50 px-4 py-3 pb-safe flex justify-between items-center hidden-view">
+            <button onclick="renderAdminDashboard()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gold-500 w-1/4 nav-item-admin" id="nav-admin-dash">
+                <i data-lucide="layout-dashboard" class="w-6 h-6"></i><span class="text-[10px]">ภาพรวม</span>
+            </button>
+            <button onclick="renderAdminUsers()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gold-500 w-1/4 relative nav-item-admin" id="nav-admin-users">
+                <i data-lucide="users" class="w-6 h-6"></i><span class="text-[10px]">ลูกค้า</span><span id="pending-badge" class="absolute -top-1 right-3 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center hidden-view">0</span>
+            </button>
+            <button onclick="renderAdminShop()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gold-500 w-1/4 nav-item-admin" id="nav-admin-shop">
+                <i data-lucide="store" class="w-6 h-6"></i><span class="text-[10px]">จัดการ</span>
+            </button>
+            <!-- เมนูแชทแอดมิน -->
+            <button onclick="renderAdminChatList()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gold-500 w-1/4 nav-item-admin" id="nav-admin-chat">
+                <i data-lucide="message-circle" class="w-6 h-6"></i><span class="text-[10px]">แชท</span>
+            </button>
         </div>
-    </main>
+    </div>
 
-    <!-- Scripts -->
-    <script>
-        // Initialize Icons
-        lucide.createIcons();
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- STATE MANAGEMENT ---
-        // ใช้ in-memory array สำหรับเวอร์ชัน Prototype MVP 
-        // ข้อมูลจะอยู่ตราบใดที่ยังไม่รีเฟรชหน้าเว็บ
-        let bookings = [];
+        // ==================== INITIAL DATA (Added Messages Array) ====================
+        let db = {
+            users: [
+                { id: 'u1', username: 'berbar', password: '1234', fname: 'เจ้าของร้าน', nname: 'Admin', phone: '000', role: 'admin', status: 'approved' },
+                { id: 'u2', username: 'user1', password: '1234', fname: 'สมชาย', nname: 'ชาย', phone: '0812345678', role: 'user', status: 'approved' }
+            ],
+            shopInfo: { open: '10:00', close: '20:00', notice: 'กรุณามาก่อนเวลาจอง สัก 5-10 นาทีนะครับ' },
+            barbers: [
+                { id: 'b1', name: 'ช่างอาร์ท (Master)', status: 'available' },
+                { id: 'b2', name: 'ช่างบอย (Fade Specialist)', status: 'busy' }
+            ],
+            services: [
+                { id: 's1', name: 'Premium Haircut', desc: 'ตัดผม + เซ็ตทรงมาตรฐาน', price: 500, type: 'service', image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=300&q=80' },
+                { id: 's2', name: 'Skin Fade Haircut', desc: 'เฟดไล่ระดับสไตล์โมเดิร์น', price: 600, type: 'service', image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=300&q=80' }
+            ],
+            products: [
+                { id: 'p1', name: 'Pomade Suavecito', desc: 'โพเมดเซ็ตผม พลังเกาะแน่น', price: 650, type: 'product', image: 'https://images.unsplash.com/photo-1597854710119-a0a41d6b05eb?auto=format&fit=crop&w=300&q=80' }
+            ],
+            transactions: [],
+            messages: [ // โครงสร้างข้อความแชท
+                // ตัวอย่าง: { id: 'm1', userId: 'u2', senderId: 'u2', text: 'สวัสดีครับ', timestamp: '...' }
+            ] 
+        };
 
-        // ตั้งค่าวันที่ขั้นต่ำในฟอร์มให้เป็นวันนี้
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('book-date').setAttribute('min', today);
+        let localCart = [];
+        let currentUser = null;
+        let isFirebaseReady = false;
+        let stateDocRef = null;
+        let currentAdminChatUserId = null; // State สำหรับจำว่าแอดมินกำลังคุยกับใครอยู่
 
-        // --- NAVIGATION ROUTING ---
-        function navigateTo(viewId) {
-            // ซ่อนทุกหน้า
-            document.getElementById('view-home').classList.add('hidden-view');
-            document.getElementById('view-booking').classList.add('hidden-view');
-            document.getElementById('view-success').classList.add('hidden-view');
-            document.getElementById('view-admin').classList.add('hidden-view');
+        // ==================== FIREBASE SETUP ====================
+        async function setupFirebase() {
+            try {
+                let firebaseConfig;
+                if (typeof __firebase_config !== 'undefined') {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                } else {
+                    console.warn("⚠️ รันแบบ Offline");
+                    lucide.createIcons(); checkAutoLogin(); return; 
+                }
 
-            // รีเซ็ตฟอร์มเวลาเปิดหน้า booking
-            if(viewId === 'booking') {
-                document.getElementById('booking-form').reset();
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const firestore = getFirestore(app);
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'my-barber-app';
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                else await signInAnonymously(auth);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        stateDocRef = doc(firestore, 'artifacts', appId, 'public', 'data', 'appState', 'mainDb');
+                        const snap = await getDoc(stateDocRef);
+                        if (!snap.exists()) await setDoc(stateDocRef, db); 
+                        
+                        onSnapshot(stateDocRef, (docSnap) => {
+                            if (docSnap.exists()) { 
+                                db = docSnap.data(); 
+                                if(!db.messages) db.messages = []; // Safety check
+                                refreshCurrentView(); 
+                            }
+                        });
+                        isFirebaseReady = true;
+                        checkAutoLogin(); // ตรวจสอบรหัสที่บันทึกไว้หลังจากต่อ DB ติดแล้ว
+                    }
+                });
+            } catch (error) { console.error("Firebase Error:", error); }
+        }
+        setupFirebase();
+
+        async function syncData() { if (isFirebaseReady && stateDocRef) await setDoc(stateDocRef, db); }
+
+        // ==================== AUTO LOGIN LOGIC ====================
+        function checkAutoLogin() {
+            const savedUid = localStorage.getItem('gentleman_saved_uid');
+            if (savedUid) {
+                const user = db.users.find(u => u.id === savedUid);
+                if (user) {
+                    currentUser = user;
+                    checkUserStatus();
+                    showToast('เข้าสู่ระบบอัตโนมัติ', 'success');
+                }
             }
-
-            // ถ้าเข้าหน้าแอดมิน ให้ดึงข้อมูลล่าสุดมาแสดง
-            if(viewId === 'admin') {
-                renderAdminDashboard();
-            }
-
-            // โชว์หน้าที่ต้องการ
-            document.getElementById(`view-${viewId}`).classList.remove('hidden-view');
-            window.scrollTo(0, 0);
         }
 
-        // --- UI HELPERS ---
-        function showToast(message, type = 'error') {
+        // ==================== UTILS ====================
+        function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
-            const msgEl = document.getElementById('toast-message');
-            
-            toast.className = `fixed top-20 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 transition-opacity duration-300 ${type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`;
-            msgEl.textContent = message;
-            
+            document.getElementById('toast-icon').setAttribute('data-lucide', type === 'error' ? 'alert-circle' : 'check-circle');
+            toast.className = `fixed top-5 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-3 text-sm font-medium glass-panel transition-opacity duration-300 ${type === 'error' ? 'border-red-500 text-red-400' : 'border-gold-500 text-gold-400'}`;
+            document.getElementById('toast-message').textContent = message;
+            lucide.createIcons();
             toast.classList.remove('hidden-view');
-            
-            // Fade in
-            setTimeout(() => { toast.style.opacity = '1'; }, 10);
-            
-            // Fade out after 3s
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => { toast.classList.add('hidden-view'); }, 300);
-            }, 3000);
+            setTimeout(() => toast.style.opacity = '1', 10);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.classList.add('hidden-view'), 300); }, 3000);
         }
 
-        function formatDateDisplay(dateStr) {
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+        function formatMoney(num) { return new Intl.NumberFormat('th-TH').format(num) + ' ฿'; }
+        function generateId() { return Math.random().toString(36).substr(2, 9); }
+        function formatTime(isoString) {
+            const d = new Date(isoString);
+            return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
         }
 
-        // --- BOOKING LOGIC ---
-        document.getElementById('booking-form').addEventListener('submit', function(e) {
+        window._pendingConfirmAction = null;
+        window.showConfirm = (msg, action) => {
+            document.getElementById('confirm-message').textContent = msg; window._pendingConfirmAction = action;
+            document.getElementById('confirm-modal').classList.remove('hidden-view'); setTimeout(() => document.getElementById('confirm-modal').style.opacity = '1', 10);
+        };
+        window.closeConfirm = () => {
+            document.getElementById('confirm-modal').style.opacity = '0'; setTimeout(() => { document.getElementById('confirm-modal').classList.add('hidden-view'); window._pendingConfirmAction = null; }, 300);
+        };
+        window.executeConfirm = async () => { if(window._pendingConfirmAction) await window._pendingConfirmAction(); window.closeConfirm(); };
+
+        function refreshCurrentView() {
+            if (!currentUser) return;
+            const freshUser = db.users.find(u => u.id === currentUser.id);
+            if (!freshUser) { window.logout(); return; }
+            currentUser = freshUser;
+
+            if (currentUser.status === 'pending') { checkUserStatus(); return; }
+            if (currentUser.role === 'admin') {
+                updateAdminBadges();
+                if(!document.getElementById('nav-admin-dash').classList.contains('text-gray-400')) window.renderAdminDashboard();
+                if(!document.getElementById('nav-admin-users').classList.contains('text-gray-400')) window.renderAdminUsers();
+                if(!document.getElementById('nav-admin-shop').classList.contains('text-gray-400')) window.renderAdminShop();
+                if(!document.getElementById('nav-admin-chat').classList.contains('text-gray-400')) {
+                    if(currentAdminChatUserId) window.renderAdminChatRoom(currentAdminChatUserId);
+                    else window.renderAdminChatList();
+                }
+            } else {
+                if(!document.getElementById('nav-home').classList.contains('text-gray-400')) window.renderCustomerHome();
+                if(!document.getElementById('nav-history').classList.contains('text-gray-400')) window.renderHistory();
+                if(!document.getElementById('nav-chat').classList.contains('text-gray-400')) window.renderCustomerChat();
+            }
+        }
+
+        window.switchAuthTab = (tab) => {
+            document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('active', 'text-white'); btn.classList.add('text-gray-500'); });
+            document.getElementById(`tab-${tab}`).classList.add('active', 'text-white');
+            document.getElementById(`form-login`).classList.add('hidden-view'); document.getElementById(`form-register`).classList.add('hidden-view');
+            document.getElementById(`form-${tab}`).classList.remove('hidden-view');
+        };
+
+        window.handleLogin = (e) => {
             e.preventDefault();
+            const u = document.getElementById('login-username').value, p = document.getElementById('login-password').value;
+            const remember = document.getElementById('remember-me').checked;
+            const user = db.users.find(x => x.username === u && x.password === p);
             
-            const name = document.getElementById('cust-name').value.trim();
-            const phone = document.getElementById('cust-phone').value.trim();
-            const date = document.getElementById('book-date').value;
-            const time = document.getElementById('book-time').value;
-            const barber = document.getElementById('barber-select').value;
+            if(user) { 
+                currentUser = user; 
+                if(remember) localStorage.setItem('gentleman_saved_uid', user.id);
+                else localStorage.removeItem('gentleman_saved_uid');
+                checkUserStatus(); 
+            } else {
+                showToast('Username หรือ Password ไม่ถูกต้อง', 'error');
+            }
+        };
 
-            // Validation: ตรวจสอบว่ามีการจองซ้ำ (ช่างคนเดียวกัน วันเดียวกัน เวลาเดียวกัน) หรือไม่
-            const isDoubleBooked = bookings.some(b => 
-                b.date === date && 
-                b.time === time && 
-                b.barber === barber
-            );
+        window.handleRegister = async (e) => {
+            e.preventDefault();
+            const newUser = {
+                id: 'u_' + generateId(), fname: document.getElementById('reg-fname').value, nname: document.getElementById('reg-nname').value,
+                phone: document.getElementById('reg-phone').value, username: document.getElementById('reg-username').value,
+                password: document.getElementById('reg-password').value, role: 'user', status: 'pending'
+            };
+            if(db.users.find(x => x.username === newUser.username)) return showToast('Username นี้มีคนใช้แล้ว', 'error');
+            db.users.push(newUser); currentUser = newUser; await syncData(); checkUserStatus(); showToast('สมัครสำเร็จ รอการอนุมัติ');
+        };
 
-            if (isDoubleBooked) {
-                showToast(`คิวของ ${barber} ในวันที่ ${formatDateDisplay(date)} เวลา ${time} ไม่ว่างแล้วครับ กรุณาเลือกเวลาอื่น`, 'error');
-                return;
+        window.logout = () => {
+            currentUser = null; localCart = []; currentAdminChatUserId = null;
+            localStorage.removeItem('gentleman_saved_uid'); // ล้างรหัสผ่านที่จำไว้
+            document.getElementById('view-auth').classList.remove('hidden-view'); document.getElementById('view-pending').classList.add('hidden-view'); document.getElementById('app-shell').classList.add('hidden-view');
+            document.getElementById('form-login').reset(); document.getElementById('form-register').reset(); window.switchAuthTab('login');
+        };
+
+        function checkUserStatus() {
+            document.getElementById('view-auth').classList.add('hidden-view');
+            if(currentUser.status === 'pending') {
+                document.getElementById('view-pending').classList.remove('hidden-view'); document.getElementById('app-shell').classList.add('hidden-view');
+            } else {
+                document.getElementById('view-pending').classList.add('hidden-view'); document.getElementById('app-shell').classList.remove('hidden-view');
+                document.getElementById('user-display-name').textContent = `คุณ${currentUser.nname}`;
+                if(currentUser.role === 'admin') {
+                    document.getElementById('bottom-nav').classList.add('hidden-view'); document.getElementById('admin-bottom-nav').classList.remove('hidden-view');
+                    window.renderAdminDashboard(); updateAdminBadges();
+                } else {
+                    document.getElementById('admin-bottom-nav').classList.add('hidden-view'); document.getElementById('bottom-nav').classList.remove('hidden-view');
+                    window.renderCustomerHome(); updateCartBadge();
+                }
+            }
+        }
+
+        function setActiveNav(id, prefix = 'nav-item') {
+            document.querySelectorAll(`.${prefix}`).forEach(btn => { btn.classList.remove('text-gold-500'); btn.classList.add('text-gray-400'); });
+            document.getElementById(id).classList.add('text-gold-500'); document.getElementById(id).classList.remove('text-gray-400');
+        }
+
+        // ==================== CHAT SYSTEM (CUSTOMER & ADMIN) ====================
+
+        // [Customer Chat View]
+        window.renderCustomerChat = () => {
+            setActiveNav('nav-chat');
+            const myMsgs = db.messages.filter(m => m.userId === currentUser.id);
+            
+            let chatHTML = myMsgs.map(m => {
+                const isMe = m.senderId === currentUser.id;
+                return `
+                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-3">
+                        ${!isMe ? `<span class="text-[10px] text-gray-500 ml-1 mb-0.5">พนักงาน</span>` : ''}
+                        <div class="max-w-[80%] p-3 text-sm shadow-md ${isMe ? 'chat-bubble-me' : 'chat-bubble-other'}">
+                            ${m.text}
+                        </div>
+                        <span class="text-[10px] text-gray-600 mt-1">${formatTime(m.timestamp)}</span>
+                    </div>
+                `;
+            }).join('');
+
+            if(myMsgs.length === 0) {
+                chatHTML = `<div class="flex flex-col items-center justify-center h-40 text-center text-gray-500">
+                    <i data-lucide="message-square-dashed" class="w-10 h-10 mb-2 opacity-50"></i>
+                    <p class="text-sm">ไม่มีประวัติการสนทนา<br>ส่งข้อความสอบถามได้เลยครับ</p>
+                </div>`;
             }
 
-            // บันทึกการจอง
-            const newBooking = {
-                id: Date.now().toString(),
-                name,
-                phone,
-                date,
-                time,
-                barber,
-                createdAt: new Date().toISOString()
+            document.getElementById('main-content').innerHTML = `
+                <div class="flex flex-col h-[calc(100vh-140px)]">
+                    <div class="p-4 bg-dark-900 border-b border-gray-800 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gold-500 rounded-full flex items-center justify-center text-black border-2 border-gold-600"><i data-lucide="scissors" class="w-5 h-5"></i></div>
+                        <div><h2 class="font-bold text-white text-sm">ติดต่อร้านตัดผม</h2><p class="text-xs text-green-500">พร้อมให้บริการ</p></div>
+                    </div>
+                    <div id="chat-box" class="flex-grow p-4 overflow-y-auto bg-black/50">${chatHTML}</div>
+                    <form onsubmit="sendChatMessage(event, '${currentUser.id}')" class="p-3 bg-dark-900 border-t border-gray-800 flex gap-2">
+                        <input type="text" id="chat-input" class="input-premium py-2.5 px-4 text-sm flex-grow rounded-full" placeholder="พิมพ์ข้อความ..." required autocomplete="off">
+                        <button type="submit" class="bg-gold-500 text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-gold-400 flex-shrink-0"><i data-lucide="send" class="w-4 h-4 ml-1"></i></button>
+                    </form>
+                </div>
+            `;
+            lucide.createIcons();
+            const box = document.getElementById('chat-box');
+            if(box) box.scrollTop = box.scrollHeight;
+        };
+
+        // [Admin Chat List View]
+        window.renderAdminChatList = () => {
+            setActiveNav('nav-admin-chat', 'nav-item-admin');
+            currentAdminChatUserId = null; // Reset state
+            
+            // หา user ที่มีประวัติแชททั้งหมด
+            const usersWithChat = [...new Set(db.messages.map(m => m.userId))];
+            
+            let html = '';
+            if(usersWithChat.length === 0) {
+                html = `<p class="text-center text-sm text-gray-500 mt-10">ยังไม่มีข้อความจากลูกค้า</p>`;
+            } else {
+                html = usersWithChat.map(uid => {
+                    const user = db.users.find(u => u.id === uid);
+                    const userMsgs = db.messages.filter(m => m.userId === uid);
+                    const lastMsg = userMsgs[userMsgs.length - 1];
+                    if(!user) return '';
+
+                    return `
+                        <div onclick="renderAdminChatRoom('${uid}')" class="glass-panel p-3 rounded-xl mb-2 flex items-center gap-4 cursor-pointer hover:border-gold-500/50 transition">
+                            <div class="w-12 h-12 bg-dark-700 rounded-full flex items-center justify-center border border-gray-600 text-gold-500 relative flex-shrink-0">
+                                <i data-lucide="user" class="w-6 h-6"></i>
+                            </div>
+                            <div class="flex-grow min-w-0">
+                                <div class="flex justify-between items-baseline mb-1">
+                                    <h4 class="font-bold text-white text-sm truncate">${user.fname} (${user.nname})</h4>
+                                    <span class="text-[10px] text-gray-500 flex-shrink-0">${formatTime(lastMsg.timestamp)}</span>
+                                </div>
+                                <p class="text-xs text-gray-400 truncate ${lastMsg.senderId !== 'admin' ? 'font-medium text-white' : ''}">
+                                    ${lastMsg.senderId === 'admin' ? 'คุณ: ' : ''}${lastMsg.text}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('main-content').innerHTML = `<div class="p-4"><h2 class="text-xl font-bold mb-4">ข้อความจากลูกค้า</h2>${html}</div>`;
+            lucide.createIcons();
+        };
+
+        // [Admin Chat Room View]
+        window.renderAdminChatRoom = (userId) => {
+            setActiveNav('nav-admin-chat', 'nav-item-admin');
+            currentAdminChatUserId = userId;
+            const targetUser = db.users.find(u => u.id === userId);
+            const userMsgs = db.messages.filter(m => m.userId === userId);
+
+            let chatHTML = userMsgs.map(m => {
+                const isAdmin = m.senderId === 'admin';
+                return `
+                    <div class="flex flex-col ${isAdmin ? 'items-end' : 'items-start'} mb-3">
+                        <div class="max-w-[80%] p-3 text-sm shadow-md ${isAdmin ? 'chat-bubble-me' : 'chat-bubble-other'}">
+                            ${m.text}
+                        </div>
+                        <span class="text-[10px] text-gray-600 mt-1">${formatTime(m.timestamp)}</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('main-content').innerHTML = `
+                <div class="flex flex-col h-[calc(100vh-140px)]">
+                    <div class="p-3 bg-dark-900 border-b border-gray-800 flex items-center gap-3">
+                        <button onclick="renderAdminChatList()" class="text-gray-400 hover:text-white p-2"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                        <h2 class="font-bold text-white text-sm">แชทกับ: ${targetUser.nname}</h2>
+                    </div>
+                    <div id="admin-chat-box" class="flex-grow p-4 overflow-y-auto bg-black/50">${chatHTML}</div>
+                    <form onsubmit="sendChatMessage(event, '${userId}')" class="p-3 bg-dark-900 border-t border-gray-800 flex gap-2">
+                        <input type="text" id="chat-input" class="input-premium py-2.5 px-4 text-sm flex-grow rounded-full" placeholder="พิมพ์ตอบกลับ..." required autocomplete="off">
+                        <button type="submit" class="bg-gold-500 text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-gold-400 flex-shrink-0"><i data-lucide="send" class="w-4 h-4 ml-1"></i></button>
+                    </form>
+                </div>
+            `;
+            lucide.createIcons();
+            const box = document.getElementById('admin-chat-box');
+            if(box) box.scrollTop = box.scrollHeight;
+        };
+
+        // [Send Message Logic]
+        window.sendChatMessage = async (e, chatUserId) => {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+
+            const newMessage = {
+                id: 'm_' + generateId(),
+                userId: chatUserId, // Chat session owner
+                senderId: currentUser.role === 'admin' ? 'admin' : currentUser.id,
+                text: text,
+                timestamp: new Date().toISOString()
             };
 
-            bookings.push(newBooking);
+            db.messages.push(newMessage);
+            input.value = '';
             
-            // เรียงลำดับการจองตามวันที่และเวลา
-            bookings.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+            // Re-render instantly before cloud sync for better UX
+            if(currentUser.role === 'admin') window.renderAdminChatRoom(chatUserId);
+            else window.renderCustomerChat();
 
-            // นำข้อมูลไปแสดงในหน้า Success
-            document.getElementById('success-name').textContent = name;
-            document.getElementById('success-date').textContent = formatDateDisplay(date);
-            document.getElementById('success-time').textContent = time + ' น.';
-            document.getElementById('success-barber').textContent = barber;
+            await syncData(); // Push to Firebase
+        };
 
-            // นำทางไปหน้า Success
-            navigateTo('success');
-        });
+        // ==================== REST OF THE APP VIEWS ====================
+        // (Customer Home, Cart, History / Admin Dashboard, Users, Shop)
 
-        // --- ADMIN DASHBOARD LOGIC ---
-        function renderAdminDashboard() {
-            const tbody = document.getElementById('admin-table-body');
-            const emptyState = document.getElementById('admin-empty-state');
-            
-            // อัปเดตสถิติ
-            document.getElementById('stat-total').textContent = bookings.length;
-            document.getElementById('stat-john').textContent = bookings.filter(b => b.barber.includes('John')).length;
-            document.getElementById('stat-mike').textContent = bookings.filter(b => b.barber.includes('Mike')).length;
-            document.getElementById('stat-sarah').textContent = bookings.filter(b => b.barber.includes('Sarah')).length;
+        function updateCartBadge() {
+            const badge = document.getElementById('cart-badge');
+            if(localCart.length > 0) { badge.textContent = localCart.length; badge.classList.remove('hidden-view'); } 
+            else badge.classList.add('hidden-view');
+        }
 
-            tbody.innerHTML = '';
+        window.addToCart = (itemType, itemId) => {
+            const list = itemType === 'service' ? db.services : db.products;
+            const item = list.find(x => x.id === itemId);
+            if(item) { localCart.push({ ...item, cartId: generateId() }); updateCartBadge(); showToast(`เพิ่ม ${item.name} แล้ว`); }
+        };
 
-            if (bookings.length === 0) {
-                tbody.parentNode.classList.add('hidden-view');
-                emptyState.classList.remove('hidden-view');
-                return;
-            }
+        window.removeFromCart = (cartId) => { localCart = localCart.filter(x => x.cartId !== cartId); updateCartBadge(); window.renderCart(); };
 
-            tbody.parentNode.classList.remove('hidden-view');
-            emptyState.classList.add('hidden-view');
+        window.renderCustomerHome = () => {
+            setActiveNav('nav-home');
+            const renderImg = (url, name, type) => url 
+                ? `<img src="${url}" alt="${name}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                   <div class="hidden img-fallback w-full h-full"><i data-lucide="${type==='service'?'scissors':'package'}" class="text-gray-500 w-8 h-8"></i></div>`
+                : `<div class="img-fallback w-full h-full"><i data-lucide="${type==='service'?'scissors':'package'}" class="text-gray-500 w-8 h-8"></i></div>`;
 
-            bookings.forEach(booking => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-800/50 transition';
-                tr.innerHTML = `
-                    <td class="p-4 whitespace-nowrap">
-                        <div class="font-medium text-barber-gold">${formatDateDisplay(booking.date)}</div>
-                        <div class="text-xs text-gray-400"><i data-lucide="clock" class="w-3 h-3 inline"></i> ${booking.time} น.</div>
-                    </td>
-                    <td class="p-4">
-                        <div class="font-medium">${booking.name}</div>
-                    </td>
-                    <td class="p-4 text-gray-400">${booking.phone}</td>
-                    <td class="p-4">
-                        <span class="px-2 py-1 bg-gray-800 rounded text-xs border border-gray-700">${booking.barber}</span>
-                    </td>
-                    <td class="p-4 text-center">
-                        <button onclick="deleteBooking('${booking.id}')" class="text-gray-500 hover:text-red-500 transition p-2 rounded hover:bg-red-500/10" title="ยกเลิกการจอง">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-            
-            // Re-render icons for dynamic content
+            let bHTML = db.barbers.map(b => `<div class="glass-panel p-3 rounded-xl flex items-center justify-between border border-gray-800"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-dark-700 flex items-center justify-center border border-gray-600"><i data-lucide="user" class="text-gray-400 w-5 h-5"></i></div><span class="font-medium text-sm">${b.name}</span></div><div class="flex items-center gap-2 text-xs"><span class="status-dot ${b.status === 'available' ? 'status-available' : 'status-busy'}"></span><span class="${b.status === 'available' ? 'text-green-400' : 'text-red-400'}">${b.status === 'available' ? 'ว่าง' : 'ติดลูกค้า'}</span></div></div>`).join('');
+            let sHTML = db.services.map(s => `<div class="glass-panel p-3 rounded-2xl flex gap-4 items-center mb-3"><div class="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-dark-800 border border-gray-700">${renderImg(s.image, s.name, 'service')}</div><div class="flex-grow"><h4 class="font-medium text-white text-sm">${s.name}</h4><p class="text-xs text-gray-400 mt-1 line-clamp-2">${s.desc}</p><p class="text-gold-500 font-medium mt-1 text-sm">${formatMoney(s.price)}</p></div><button onclick="addToCart('service', '${s.id}')" class="w-10 h-10 bg-gold-500 rounded-full flex items-center justify-center text-black flex-shrink-0 shadow-[0_0_10px_rgba(234,179,8,0.3)]"><i data-lucide="plus" class="w-5 h-5"></i></button></div>`).join('');
+            let pHTML = db.products.map(p => `<div class="glass-panel p-3 rounded-2xl mb-3 flex gap-4 items-center"><div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-dark-800 border border-gray-700">${renderImg(p.image, p.name, 'product')}</div><div class="flex-grow"><h4 class="font-medium text-white text-sm">${p.name}</h4><p class="text-xs text-gray-400 mt-1 line-clamp-1">${p.desc}</p><p class="text-gold-500 font-medium mt-1 text-sm">${formatMoney(p.price)}</p></div><button onclick="addToCart('product', '${p.id}')" class="px-3 py-1.5 bg-dark-700 border border-gold-500/50 text-gold-500 rounded-lg text-xs hover:bg-gold-500 hover:text-black transition">เลือกซื้อ</button></div>`).join('');
+
+            document.getElementById('main-content').innerHTML = `
+                <div class="p-4 space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 border border-gold-500/20 gold-glow relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 opacity-10"><i data-lucide="scissors" class="w-24 h-24"></i></div>
+                        <h2 class="text-xl font-bold mb-2">ยินดีต้อนรับ, ${currentUser.nname}</h2>
+                        <div class="flex items-center gap-2 text-sm text-gray-300 mb-1"><i data-lucide="clock" class="w-4 h-4 text-gold-500"></i> เวลา: <span class="text-white">${db.shopInfo.open} - ${db.shopInfo.close} น.</span></div>
+                        <div class="bg-red-500/10 border border-red-500/30 p-2 rounded-lg mt-3 flex items-start gap-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0"></i><p class="text-xs text-red-200">${db.shopInfo.notice}</p></div>
+                    </div>
+                    <div><h3 class="text-sm font-bold text-gray-400 mb-3 uppercase flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i> สถานะช่าง</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${bHTML}</div></div>
+                    <div><h3 class="text-sm font-bold text-gray-400 mb-3 uppercase flex items-center gap-2"><i data-lucide="scissors" class="w-4 h-4"></i> เลือกบริการ</h3>${sHTML}</div>
+                    <div><h3 class="text-sm font-bold text-gray-400 mb-3 uppercase flex items-center gap-2"><i data-lucide="shopping-bag" class="w-4 h-4"></i> สินค้าแนะนำ</h3>${pHTML}</div>
+                </div>`;
             lucide.createIcons();
+        };
+
+        window.renderCart = () => {
+            setActiveNav('nav-cart');
+            if(localCart.length === 0) {
+                document.getElementById('main-content').innerHTML = `<div class="flex flex-col items-center justify-center h-[70vh] text-center px-4"><div class="w-20 h-20 bg-dark-800 rounded-full flex items-center justify-center mb-4 border border-gray-800"><i data-lucide="shopping-cart" class="w-10 h-10 text-gray-600"></i></div><h3 class="text-xl font-bold text-gray-300">ตะกร้าว่างเปล่า</h3><button onclick="renderCustomerHome()" class="mt-6 px-6 py-2 bg-gold-500 text-black font-medium rounded-full">กลับไปเลือกบริการ</button></div>`;
+                lucide.createIcons(); return;
+            }
+            const total = localCart.reduce((sum, item) => sum + item.price, 0);
+            const hasService = localCart.some(item => item.type === 'service');
+
+            let cartHTML = localCart.map(item => `<div class="flex justify-between items-center bg-dark-800 p-3 rounded-lg border border-gray-700 mb-2"><div><p class="font-medium text-sm text-white">${item.name}</p><p class="text-xs text-gold-500">${formatMoney(item.price)}</p></div><button onclick="removeFromCart('${item.cartId}')" class="text-red-400 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`).join('');
+            let bookingHTML = hasService ? `<div class="mt-6 border-t border-gray-800 pt-6"><h3 class="font-bold mb-4 text-gold-500 flex items-center gap-2"><i data-lucide="calendar"></i> ข้อมูลการจองคิว</h3><div class="grid grid-cols-2 gap-3 mb-4"><div><label class="text-xs text-gray-400 mb-1 block">วันที่</label><input type="date" id="c-date" class="input-premium py-2 text-sm" required min="${new Date().toISOString().split('T')[0]}"></div><div><label class="text-xs text-gray-400 mb-1 block">เวลา</label><select id="c-time" class="input-premium py-2 text-sm appearance-none" required><option value="">เลือกเวลา</option><option value="10:00">10:00</option><option value="12:00">12:00</option><option value="15:00">15:00</option></select></div></div><select id="c-barber" class="input-premium py-2 text-sm appearance-none" required><option value="">เลือกช่าง</option>${db.barbers.map(b => `<option value="${b.id}">${b.name}</option>`).join('')}</select></div>` : '';
+
+            document.getElementById('main-content').innerHTML = `
+                <div class="p-4"><h2 class="text-xl font-bold mb-4">สรุปรายการ</h2>
+                    <div class="glass-panel p-4 rounded-2xl mb-6">${cartHTML}<div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-700"><span class="font-bold text-gray-300">ยอดรวม</span><span class="font-bold text-xl text-gold-500">${formatMoney(total)}</span></div></div>
+                    <form onsubmit="handleCheckout(event)" class="glass-panel p-5 rounded-2xl mb-6">${bookingHTML}
+                        <div class="mt-6 border-t border-gray-800 pt-6"><h3 class="font-bold mb-3 text-white flex items-center gap-2"><i data-lucide="wallet"></i> ชำระเงิน</h3>
+                            <div class="grid grid-cols-2 gap-3"><label class="border border-gray-700 rounded-xl p-3 flex items-center gap-2 cursor-pointer has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"><input type="radio" name="payment" value="cash" class="accent-gold-500" checked><span class="text-sm">เงินสด</span></label><label class="border border-gray-700 rounded-xl p-3 flex items-center gap-2 cursor-pointer has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"><input type="radio" name="payment" value="transfer" class="accent-gold-500"><span class="text-sm">โอนเงิน</span></label></div>
+                        </div><button type="submit" class="w-full bg-gold-500 text-black font-bold py-4 rounded-xl mt-6 hover:bg-gold-400">ยืนยัน</button>
+                    </form>
+                </div>`;
+            lucide.createIcons();
+        };
+
+        window.handleCheckout = async (e) => {
+            e.preventDefault();
+            const hasService = localCart.some(i => i.type === 'service');
+            let bDetails = null;
+            if(hasService) {
+                const d = document.getElementById('c-date').value, t = document.getElementById('c-time').value, bId = document.getElementById('c-barber').value;
+                if(!d || !t || !bId) return showToast('กรอกข้อมูลให้ครบ', 'error');
+                bDetails = { date: d, time: t, barberName: db.barbers.find(b => b.id === bId).name };
+            }
+            const tx = { id: 'TRX-' + generateId().toUpperCase(), userId: currentUser.id, userName: `${currentUser.fname} (${currentUser.nname})`, phone: currentUser.phone, items: [...localCart], total: localCart.reduce((s, i) => s + i.price, 0), payment: document.querySelector('input[name="payment"]:checked').value, booking: bDetails, status: 'completed', createdAt: new Date().toISOString() };
+            db.transactions.unshift(tx); localCart = []; await syncData(); updateCartBadge();
+            document.getElementById('main-content').innerHTML = `<div class="flex flex-col items-center justify-center h-[80vh] text-center px-6"><div class="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mb-6 border border-green-500/30 gold-glow"><i data-lucide="check-circle-2" class="w-12 h-12 text-green-500"></i></div><h2 class="text-2xl font-bold text-white mb-2">สำเร็จ!</h2><p class="text-gray-400 text-sm mb-6">รหัส: <span class="text-gold-500">${tx.id}</span></p><button onclick="renderHistory()" class="w-full max-w-sm bg-dark-700 text-white py-3 rounded-xl">ดูประวัติ</button></div>`;
+            lucide.createIcons();
+        };
+
+        window.renderHistory = () => {
+            setActiveNav('nav-history');
+            const myTxs = db.transactions.filter(t => t.userId === currentUser.id);
+            if(myTxs.length === 0) { document.getElementById('main-content').innerHTML = `<div class="p-8 text-center text-gray-500 mt-20">ไม่มีประวัติ</div>`; return; }
+            document.getElementById('main-content').innerHTML = `<div class="p-4"><h2 class="text-xl font-bold mb-4">ประวัติ</h2>` + myTxs.map(tx => `<div class="glass-panel p-4 rounded-xl mb-4 border border-gray-800"><div class="flex justify-between border-b border-gray-800 pb-2 mb-2"><span class="text-xs text-gray-500">${new Date(tx.createdAt).toLocaleDateString('th-TH')}</span><span class="text-xs text-gold-500">${tx.id}</span></div>${tx.booking ? `<div class="mb-3 bg-dark-800/50 p-2 rounded text-sm"><p class="text-white">คิว: ${tx.booking.date} เวลา ${tx.booking.time}</p><p class="text-gray-400 text-xs">ช่าง: ${tx.booking.barberName}</p></div>` : ''}<div class="space-y-1 mb-3">${tx.items.map(i => `<div class="flex justify-between text-sm"><span class="text-gray-300">- ${i.name}</span><span class="text-gray-500">${formatMoney(i.price)}</span></div>`).join('')}</div><div class="flex justify-between pt-2 border-t border-gray-800"><span class="text-xs text-gray-500">ชำระ: ${tx.payment}</span><span class="font-bold text-gold-500">${formatMoney(tx.total)}</span></div></div>`).join('') + `</div>`;
+            lucide.createIcons();
+        };
+
+        // ADMIN VIEWS
+        function updateAdminBadges() {
+            const count = db.users.filter(u => u.status === 'pending').length;
+            const b = document.getElementById('pending-badge');
+            if(count > 0) { b.textContent = count; b.classList.remove('hidden-view'); } else b.classList.add('hidden-view');
         }
 
-        function deleteBooking(id) {
-            // ในแอปจริงควรมี Custom Modal แทน confirm() เพื่อ UI ที่ดีกว่า 
-            // แต่เพื่อความเรียบง่ายใน MVP เราจะให้ลบเลยพร้อมแสดงแจ้งเตือน
-            bookings = bookings.filter(b => b.id !== id);
-            renderAdminDashboard();
-            showToast('ยกเลิกคิวเรียบร้อยแล้ว', 'success');
-        }
+        window.renderAdminDashboard = () => {
+            setActiveNav('nav-admin-dash', 'nav-item-admin');
+            const tr = db.transactions.reduce((s, tx) => s + tx.total, 0), tb = db.transactions.filter(tx => tx.booking).length;
+            let txs = db.transactions.slice(0, 10).map(tx => `<div class="bg-dark-800 p-3 rounded-lg mb-2 border border-gray-700 flex justify-between items-center"><div><p class="text-sm font-bold text-white">${tx.userName}</p><p class="text-[10px] text-gray-500">${tx.booking ? `จอง: ${tx.booking.date}` : 'ซื้อสินค้า'}</p></div><div class="flex items-center gap-3"><p class="text-sm font-bold text-gold-500">+${formatMoney(tx.total)}</p><button onclick="deleteTransaction('${tx.id}')" class="text-red-400 hover:bg-red-500/20 p-2 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`).join('') || '<p class="text-center text-sm text-gray-500">ไม่มีรายการ</p>';
+            document.getElementById('main-content').innerHTML = `<div class="p-4 space-y-4"><h2 class="text-xl font-bold mb-2">ภาพรวม</h2><div class="grid grid-cols-2 gap-3"><div class="glass-panel p-4 rounded-2xl border-l-4 border-gold-500"><p class="text-xs text-gray-400 mb-1">รายได้</p><p class="text-xl font-bold text-white">${formatMoney(tr)}</p></div><div class="glass-panel p-4 rounded-2xl border-l-4 border-blue-500"><p class="text-xs text-gray-400 mb-1">คิว</p><p class="text-xl font-bold text-white">${tb}</p></div></div><div class="glass-panel p-4 rounded-2xl"><h3 class="text-sm font-bold mb-3 flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4"></i> ล่าสุด</h3>${txs}</div></div>`;
+            lucide.createIcons();
+        };
 
-        // ค่าเริ่มต้นเมื่อโหลดแอป
-        navigateTo('home');
-        
-        // จำลองข้อมูลเริ่มต้น (Mock Data) เพื่อให้เห็นภาพในหน้าแอดมิน
-        // bookings.push({
-        //     id: '1', name: 'สมปอง', phone: '0812345678', date: today, time: '13:00', barber: 'John (Master)'
-        // });
+        window.renderAdminUsers = () => {
+            setActiveNav('nav-admin-users', 'nav-item-admin');
+            const pending = db.users.filter(u => u.status === 'pending'), app = db.users.filter(u => u.status === 'approved' && u.role !== 'admin');
+            let pHTML = pending.map(u => `<div class="bg-dark-800 p-3 rounded-lg mb-2 border border-yellow-500/30 flex justify-between items-center"><div><p class="text-sm font-bold text-white">${u.fname}</p><p class="text-xs text-gray-400">User: ${u.username}</p></div><button onclick="approveUser('${u.id}')" class="bg-gold-500 text-black px-3 py-1.5 rounded-lg text-xs font-bold">อนุมัติ</button></div>`).join('') || '<p class="text-sm text-gray-500">ไม่มีผู้ใช้รออนุมัติ</p>';
+            document.getElementById('main-content').innerHTML = `<div class="p-4 space-y-6"><div><h3 class="text-sm font-bold text-yellow-500 mb-3 flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i> รออนุมัติ (${pending.length})</h3>${pHTML}</div><div><h3 class="text-sm font-bold text-gray-400 mb-3">ลูกค้าทั้งหมด (${app.length})</h3>${app.map(u => `<div class="bg-dark-800/50 p-3 rounded-lg mb-2"><p class="text-sm">${u.fname}</p><p class="text-xs text-gray-500">${u.phone}</p></div>`).join('')}</div></div>`;
+            lucide.createIcons();
+        };
+
+        window.approveUser = async (id) => { const u = db.users.find(u => u.id === id); if(u) { u.status = 'approved'; updateAdminBadges(); window.renderAdminUsers(); await syncData(); showToast('อนุมัติสำเร็จ'); } };
+
+        window.renderAdminShop = () => {
+            setActiveNav('nav-admin-shop', 'nav-item-admin');
+            let bHTML = db.barbers.map(b => `<div class="flex justify-between items-center bg-dark-800 p-3 rounded-lg mb-2 border border-gray-700"><span class="text-sm text-white">${b.name}</span><button onclick="toggleBarberStatus('${b.id}')" class="px-3 py-1 rounded text-xs font-bold ${b.status === 'available' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}">${b.status === 'available' ? 'ว่าง' : 'ติดลูกค้า'}</button></div>`).join('');
+            let sHTML = db.services.map(s => `<div class="flex justify-between items-center bg-dark-800 p-3 rounded-lg border border-gray-700 mb-2"><div><p class="text-sm text-white">${s.name}</p></div><button onclick="deleteItem('service', '${s.id}')" class="text-red-400 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`).join('');
+            let pHTML = db.products.map(p => `<div class="flex justify-between items-center bg-dark-800 p-3 rounded-lg border border-gray-700 mb-2"><div><p class="text-sm text-white">${p.name}</p></div><button onclick="deleteItem('product', '${p.id}')" class="text-red-400 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`).join('');
+
+            document.getElementById('main-content').innerHTML = `
+                <div class="p-4 space-y-6">
+                    <div class="glass-panel p-4 rounded-2xl"><h3 class="text-sm font-bold mb-3 text-white">สถานะช่าง</h3>${bHTML}</div>
+                    <div class="glass-panel p-4 rounded-2xl"><h3 class="text-sm font-bold mb-3 text-white">บริการ</h3>${sHTML}<h3 class="text-sm font-bold mt-6 mb-3 text-white">สินค้า</h3>${pHTML}
+                        <form onsubmit="addItem(event)" class="mt-4 pt-4 border-t border-gray-700 space-y-2">
+                            <select id="add-type" class="input-premium py-2 text-sm appearance-none"><option value="service">บริการ</option><option value="product">สินค้า</option></select>
+                            <input type="text" id="add-name" placeholder="ชื่อ" class="input-premium py-2 text-sm" required>
+                            <input type="number" id="add-price" placeholder="ราคา" class="input-premium py-2 text-sm" required>
+                            <button type="submit" class="bg-gold-500 text-black rounded-xl px-4 py-2 w-full font-bold">เพิ่ม</button>
+                        </form>
+                    </div>
+                </div>`;
+            lucide.createIcons();
+        };
+
+        window.toggleBarberStatus = async (id) => { const b = db.barbers.find(x => x.id === id); if(b) { b.status = b.status === 'available' ? 'busy' : 'available'; window.renderAdminShop(); await syncData(); } };
+        window.deleteItem = (type, id) => { window.showConfirm(`ลบรายการนี้?`, async () => { if(type === 'service') db.services = db.services.filter(s => s.id !== id); if(type === 'product') db.products = db.products.filter(p => p.id !== id); window.renderAdminShop(); await syncData(); showToast('ลบสำเร็จ'); }); };
+        window.deleteTransaction = (id) => { window.showConfirm('ลบรายการนี้?', async () => { db.transactions = db.transactions.filter(t => t.id !== id); window.renderAdminDashboard(); await syncData(); showToast('ลบสำเร็จ'); }); };
+        window.addItem = async (e) => { e.preventDefault(); const t = document.getElementById('add-type').value; const i = { id: (t==='service'?'s':'p')+generateId(), name: document.getElementById('add-name').value, desc: 'เพิ่มโดยแอดมิน', price: parseInt(document.getElementById('add-price').value), type: t }; if(t==='service') db.services.push(i); else db.products.push(i); window.renderAdminShop(); await syncData(); showToast('เพิ่มสำเร็จ'); };
+
+        document.getElementById('view-auth').classList.remove('hidden-view'); lucide.createIcons();
     </script>
+</body>
+</html>
+
+
+```
+
 </body>
 </html>
 
